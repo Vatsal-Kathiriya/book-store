@@ -1,0 +1,621 @@
+/* BASE VARIABLES & THEME SETTINGS */
+:root {
+  /* Core colors - Light Theme Default */
+  --background: #ffffff;
+  --foreground: #171717;
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+  --input-bg: #ffffff;
+  --input-border: #d1d5db;
+  --input-text: #111827;
+  
+  /* Functional colors */
+  --primary-color: #4f46e5;  /* Indigo-600 */
+  --primary-hover: #4338ca;  /* Indigo-700 */
+  --secondary-color: #7c3aed; /* Violet-600 */
+  --secondary-hover: #6d28d9; /* Violet-700 */
+  --accent-color: #f59e0b;   /* Amber-500 */
+  --success-color: #10b981;  /* Emerald-500 */
+  --error-color: #ef4444;    /* Red-500 */
+  
+  /* Text colors - Light Theme */
+  --text-primary: #111827;   /* Gray-900 */
+  --text-secondary: #374151; /* Gray-700 */
+  --text-tertiary: #4b5563;  /* Gray-600 */
+  --text-inverse: #ffffff;   /* White */
+  
+  /* Button colors - Light Theme */
+  --button-primary-bg: var(--primary-color);
+  --button-primary-text: #ffffff;
+  --button-secondary-bg: #4b5563; /* Gray-600 */
+  --button-secondary-text: #ffffff;
+  --button-outline-border: #d1d5db;
+  --button-outline-text: var(--primary-color);
+  
+  /* Status colors - Light Theme */
+  --status-pending-bg: #fef3c7;
+  --status-pending-text: #92400e;
+  --status-pending-border: #fbbf24;
+  
+  --status-processing-bg: #dbeafe;
+  --status-processing-text: #1e40af;
+  --status-processing-border: #60a5fa;
+  
+  --status-shipped-bg: #d1fae5;
+  --status-shipped-text: #065f46;
+  --status-shipped-border: #34d399;
+  
+  --status-delivered-bg: #dcfce7;
+  --status-delivered-text: #166534;
+  --status-delivered-border: #22c55e;
+  
+  --status-cancelled-bg: #fee2e2;
+  --status-cancelled-text: #991b1b;
+  --status-cancelled-border: #f87171;
+  
+  /* Table colors - Light Theme */
+  --table-header-bg: #f9fafb;
+  --table-header-text: #111827;
+  --table-border: #e5e7eb;
+  --table-row-hover: rgba(0, 0, 0, 0.05);
+  
+  /* Layout elements */
+  --header-height: 64px;
+  --footer-height: 60px;
+  
+  /* Hover states - Light Theme */
+  --hover-bg: #f3f4f6;
+  --hover-text: #111827;
+  --hover-border: #d1d5db;
+}
+
+/* Dark Theme Variables */
+.dark {
+  /* Core colors - Dark Theme */
+  --background: #0f172a; /* Slate-900 */
+  --foreground: #f8fafc; /* Slate-50 */
+  --card-bg: #1f2937;    /* Gray-800 */
+  --card-border: #374151; /* Gray-700 */
+  --input-bg: #1f2937;
+  --input-border: #4b5563;
+  --input-text: #f9fafb;
+  
+  /* Text colors - Dark Theme */
+  --text-primary: #f9fafb;   /* Gray-50 */
+  --text-secondary: #e5e7eb; /* Gray-200 */
+  --text-tertiary: #d1d5db;  /* Gray-300 */
+  --text-inverse: #111827;   /* Gray-900 */
+  
+  /* Button colors - Dark Theme */
+  --button-primary-bg: var(--primary-color);
+  --button-primary-text: #ffffff;
+  --button-secondary-bg: #6b7280; /* Gray-500 */
+  --button-secondary-text: #ffffff;
+  --button-outline-border: #4b5563;
+  --button-outline-text: #e5e7eb;
+  
+  /* Status colors - Dark Theme (slightly darker than light theme) */
+  --status-pending-bg: #78350f;
+  --status-pending-text: #fef3c7;
+  --status-pending-border: #fbbf24;
+  
+  --status-processing-bg: #1e3a8a;
+  --status-processing-text: #dbeafe;
+  --status-processing-border: #60a5fa;
+  
+  --status-shipped-bg: #065f46;
+  --status-shipped-text: #d1fae5;
+  --status-shipped-border: #34d399;
+  
+  --status-delivered-bg: #14532d;
+  --status-delivered-text: #dcfce7;
+  --status-delivered-border: #22c55e;
+  
+  --status-cancelled-bg: #7f1d1d;
+  --status-cancelled-text: #fee2e2;
+  --status-cancelled-border: #f87171;
+  
+  /* Table colors - Dark Theme */
+  --table-header-bg: #1f2937;
+  --table-header-text: #f9fafb;
+  --table-border: #374151;
+  --table-row-hover: rgba(255, 255, 255, 0.1);
+  
+  /* Hover states - Dark Theme */
+  --hover-bg: #374151;
+  --hover-text: #f9fafb;
+  --hover-border: #4b5563;
+}
+
+/* Base styles */
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Basic Typography */
+h1 { font-size: 2.25rem; font-weight: 700; color: var(--text-primary); }
+h2 { font-size: 1.875rem; font-weight: 700; color: var(--text-primary); }
+h3 { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); }
+h4 { font-size: 1.25rem; font-weight: 600; color: var(--text-primary); }
+p { color: var(--text-secondary); }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Additional tailwind base styles */
+  body {
+    @apply antialiased;
+  }
+  
+  /* Reset default behavior that might cause text visibility issues */
+  *:hover {
+    color: inherit;
+  }
+}
+
+@layer components {
+  /* BUTTON STYLES */
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  
+  .btn-primary {
+    background-color: var(--button-primary-bg);
+    color: var(--button-primary-text) !important;
+  }
+  
+  .btn-primary:hover {
+    background-color: var(--primary-hover);
+    color: var(--button-primary-text) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+  
+  .btn-secondary {
+    background-color: var(--button-secondary-bg);
+    color: var(--button-secondary-text) !important;
+  }
+  
+  .btn-secondary:hover {
+    background-color: var(--button-secondary-hover, #374151);
+    color: var(--button-secondary-text) !important;
+  }
+  
+  .btn-outline {
+    border: 1px solid var(--button-outline-border);
+    background-color: transparent;
+    color: var(--button-outline-text) !important;
+  }
+  
+  .btn-outline:hover {
+    background-color: var(--hover-bg);
+    color: var(--hover-text) !important;
+    border-color: var(--hover-border);
+  }
+  
+  /* FORM INPUT STYLES */
+  .form-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--input-border);
+    background-color: var(--input-bg);
+    color: var(--input-text) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+  
+  .form-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+  }
+  
+  /* CARD STYLES */
+  .card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  
+  .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  /* Ensure card content visibility on hover */
+  .card:hover h1,
+  .card:hover h2,
+  .card:hover h3,
+  .card:hover h4,
+  .card:hover h5,
+  .card:hover h6 {
+    color: var(--text-primary) !important;
+  }
+  
+  .card:hover p,
+  .card:hover span,
+  .card:hover div {
+    color: var(--text-secondary) !important;
+  }
+  
+  /* CONTAINER STYLES */
+  .container-page {
+    @apply container mx-auto px-4 py-8 max-w-7xl;
+    width: 100%;
+    max-width: 80rem;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+  
+  /* CATEGORY CARD STYLES */
+  .category-card {
+    transition: all 0.3s ease;
+  }
+  
+  .category-card:hover {
+    transform: translateY(-5px);
+  }
+  
+  .category-card h3 {
+    color: var(--text-primary);
+  }
+  
+  /* HERO SECTION STYLES */
+  .hero-section {
+    position: relative;
+    overflow: hidden;
+    color: white; /* Always white text on hero */
+  }
+  
+  .hero-section h1, 
+  .hero-section p {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    position: relative;
+    z-index: 1;
+    color: white !important;
+  }
+  
+  .hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=2076&auto=format&fit=crop') center/cover no-repeat;
+    opacity: 0.7;
+    z-index: 0;
+  }
+  
+  .hero-section::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.2));
+    z-index: 0;
+  }
+  
+  /* Fix for buttons in hero section to be clickable */
+  .hero-section .btn-primary,
+  .hero-section .btn-outline {
+    position: relative;
+    z-index: 2;
+  }
+  
+  .hero-section .btn-outline {
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 2px solid white;
+    color: white !important;
+    font-weight: 500;
+  }
+  
+  .hero-section .btn-outline:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+    color: white !important;
+  }
+  
+  /* NAVIGATION STYLES */
+  header nav a {
+    color: var(--text-secondary) !important;
+    transition: color 0.2s;
+  }
+  
+  header nav a:hover {
+    color: var(--primary-color) !important;
+  }
+  
+  header nav a.active {
+    color: var(--primary-color) !important;
+    font-weight: 600;
+  }
+  
+  /* Fix header for better visibility in both modes */
+  header.bg-transparent {
+    background-color: rgba(255, 255, 255, 0.5);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  
+  .dark header.bg-transparent {
+    background-color: rgba(15, 23, 42, 0.7);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  
+  /* QUANTITY SELECTOR STYLES */
+  .quantity-selector {
+    display: flex;
+    align-items: center;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    max-width: 120px;
+    border: 1px solid var(--input-border);
+  }
+  
+  .quantity-selector button {
+    background-color: var(--hover-bg);
+    border: none;
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .quantity-selector button:hover {
+    background-color: var(--hover-bg);
+    opacity: 0.8;
+  }
+  
+  .quantity-selector input {
+    width: 40px;
+    border: none;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 700;
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border-left: 1px solid var(--input-border);
+    border-right: 1px solid var(--input-border);
+    outline: none;
+    -webkit-appearance: textfield;
+    -moz-appearance: textfield;
+    padding: 0 4px;
+    box-shadow: none;
+    height: 32px;
+    line-height: 30px;
+  }
+  
+  /* Hide number input arrows/spinners */
+  .quantity-selector input::-webkit-outer-spin-button,
+  .quantity-selector input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  
+  /* TABLE STYLES - WITH SPECIAL ATTENTION TO ADMIN TABLES */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid var(--table-border);
+    background-color: var(--card-bg);
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Table headers */
+  table th {
+    background-color: var(--table-header-bg);
+    color: var(--table-header-text) !important;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid var(--table-border);
+  }
+  
+  /* Table cells */
+  table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--table-border);
+    color: var(--text-secondary) !important;
+  }
+  
+  /* Table row hover */
+  table tr:hover {
+    background-color: var(--table-row-hover) !important;
+  }
+  
+  /* Ensure text stays visible during hover */
+  table tr:hover td,
+  table tr:hover th {
+    color: var(--text-primary) !important;
+  }
+  
+  /* Alternating row colors for admin tables */
+  .admin-table tr:nth-child(odd) {
+    background-color: var(--card-bg);
+  }
+  
+  .admin-table tr:nth-child(even) {
+    background-color: var(--card-bg);
+    opacity: 0.95;
+  }
+  
+  .admin-table tr:hover {
+    background-color: var(--hover-bg) !important;
+  }
+  
+  /* STATUS BADGES AND ORDER STATUS - HIGHLY SPECIFIC STYLING */
+  /* Universal status badge style */
+  .status-badge,
+  [data-status],
+  td.status-cell > span,
+  td > .status {
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.25rem;
+    display: inline-block;
+    font-weight: 600;
+    text-align: center;
+    min-width: 100px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Status-specific styles with increased contrast */
+  .status-pending, [data-status="pending"], .status-badge.pending {
+    background-color: var(--status-pending-bg) !important;
+    color: var(--status-pending-text) !important;
+    border: 1px solid var(--status-pending-border) !important;
+  }
+  
+  .status-processing, [data-status="processing"], .status-badge.processing {
+    background-color: var(--status-processing-bg) !important;
+    color: var(--status-processing-text) !important;
+    border: 1px solid var(--status-processing-border) !important;
+  }
+  
+  .status-shipped, [data-status="shipped"], .status-badge.shipped {
+    background-color: var(--status-shipped-bg) !important;
+    color: var(--status-shipped-text) !important;
+    border: 1px solid var(--status-shipped-border) !important;
+  }
+  
+  .status-delivered, [data-status="delivered"], .status-badge.delivered {
+    background-color: var(--status-delivered-bg) !important;
+    color: var(--status-delivered-text) !important;
+    border: 1px solid var(--status-delivered-border) !important;
+  }
+  
+  .status-cancelled, [data-status="cancelled"], .status-badge.cancelled {
+    background-color: var(--status-cancelled-bg) !important;
+    color: var(--status-cancelled-text) !important;
+    border: 1px solid var(--status-cancelled-border) !important;
+  }
+  
+  /* Force visibility for status dropdown in admin tables */
+  table select,
+  .admin-table select[name="status"],
+  table select.status-select {
+    background-color: var(--input-bg) !important;
+    color: var(--input-text) !important;
+    border: 1px solid var(--input-border) !important;
+    padding: 0.375rem 0.75rem !important;
+    border-radius: 0.25rem !important;
+    font-weight: 500 !important;
+    min-width: 140px !important;
+    appearance: auto !important;
+    -webkit-appearance: auto !important;
+    -moz-appearance: auto !important;
+  }
+  
+  /* Ensure dropdown options are clearly visible */
+  table select option,
+  .admin-table select[name="status"] option,
+  table select.status-select option {
+    background-color: var(--input-bg) !important;
+    color: var(--input-text) !important;
+    padding: 0.5rem !important;
+  }
+  
+  /* Special case for third column in admin tables (typically status) */
+  table td:nth-child(3) {
+    font-weight: 500 !important;
+  }
+  
+  /* MEDIA QUERIES */
+  @media (max-width: 768px) {
+    .hero-section {
+      text-align: center;
+    }
+    
+    .book-stack {
+      width: 200px;
+      height: 250px;
+      margin: 0 auto;
+      margin-top: 2rem;
+    }
+    
+    table, thead, tbody, th, td, tr {
+      display: block;
+    }
+    
+    thead tr {
+      position: absolute;
+      top: -9999px;
+      left: -9999px;
+    }
+    
+    tr {
+      margin-bottom: 1rem;
+      border: 1px solid var(--table-border);
+    }
+    
+    td {
+      border: none;
+      border-bottom: 1px solid var(--table-border);
+      position: relative;
+      padding-left: 50%;
+    }
+    
+    td:before {
+      position: absolute;
+      top: 0.75rem;
+      left: 0.75rem;
+      width: 45%;
+      padding-right: 10px;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+  }
+
+  /* SPECIFIC UTILITY CLASSES FOR VISIBILITY AND CONTRAST */
+  
+  /* Ensure proper contrast for different text colors */
+  .text-light {
+    color: var(--text-inverse) !important;
+  }
+  
+  .text-dark {
+    color: var(--text-primary) !important;
+  }
+  
+  /* High-contrast elements for accessibility */
+  .high-contrast {
+    color: var(--text-primary) !important;
+    font-weight: 600;
+  }
+  
+  /* Emphasis for important status elements */
+  .status-emphasis {
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+  
+  /* Specifically for admin order status */
+  .admin-order-status {
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+}
