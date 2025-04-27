@@ -25,20 +25,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${nunito.variable}`}>
-      <body className={nunito.className}>
-        <ThemeProvider>
-          <AuthProvider>
+      <body className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+        <AuthProvider>
+          <ThemeProvider>
             <CartProvider>
-              <div className="min-h-screen flex flex-col">
-                <Header />
-                <main className="flex-grow">
-                  {children}
-                </main>
-                <Footer />
+              {/* Add key prop to force re-render when route changes */}
+              <div key={Math.random()}>
+                <div className="min-h-screen flex flex-col">
+                  <Header />
+                  <main className="flex-grow">
+                    {children}
+                  </main>
+                  <Footer />
+                </div>
               </div>
             </CartProvider>
-          </AuthProvider>
-        </ThemeProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -29,52 +29,69 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user from localStorage on mount
+  // Check for existing login on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
+    const checkLoggedIn = () => {
       try {
-        setUser(JSON.parse(storedUser));
+        const storedUser = localStorage.getItem('user');
+        const token = localStorage.getItem('token');
+        
+        if (storedUser && token) {
+          console.log("Found existing login, restoring session");
+          setUser(JSON.parse(storedUser));
+        }
       } catch (error) {
-        console.error('Failed to parse stored user:', error);
+        console.error("Error checking login status:", error);
+        // Clear potentially corrupted storage
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+    
+    checkLoggedIn();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // In a real app, this would make an API call
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setLoading(true);
+      console.log(`AuthContext: Login attempt for ${email}`);
+      
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+        cache: 'no-store',
+      });
 
-      // Sample login logic (replace with actual API call)
-      if (email === 'user@example.com' && password === 'password') {
-        const user = {
-          id: '1',
-          name: 'John Doe',
-          email: 'user@example.com',
-          role: 'user'
-        };
-        setUser(user);
-        localStorage.setItem('user', JSON.stringify(user));
-        return true;
-      } else if (email === 'admin@example.com' && password === 'admin') {
-        const user = {
-          id: '2',
-          name: 'Admin User',
-          email: 'admin@example.com',
-          role: 'admin'
-        };
-        setUser(user);
-        localStorage.setItem('user', JSON.stringify(user));
-        return true;
+      const data = await response.json();
+      
+      if (!response.ok) {
+        console.error(`AuthContext: Login failed - ${data.error || 'Unknown error'}`);
+        return false;
       }
       
-      return false;
+      if (!data.user || !data.token) {
+        console.error('AuthContext: Invalid response format - missing user or token');
+        return false;
+      }
+      
+      console.log(`AuthContext: Login successful for ${data.user.email}`);
+      
+      // Store user data and token
+      setUser(data.user);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('token', data.token);
+      
+      return true;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('AuthContext: Login error:', error);
       return false;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -102,8 +119,18 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   };
 
   const logout = () => {
+    console.log("Logging out user");
+    // Clear auth state
     setUser(null);
+    
+    // Clear local storage
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    
+    // Force page refresh to reset all state
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
   };
 
   return (

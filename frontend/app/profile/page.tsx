@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { FiSave, FiUser, FiLock, FiMapPin } from 'react-icons/fi';
+import api from '@/utils/api'; // Use the configured axios instance with interceptors
 
 interface User {
   _id: string;
@@ -56,31 +57,44 @@ export default function UserProfile() {
         setIsLoading(true);
         setError('');
         
-        // For production:
-        // const response = await axios.get('/api/users/profile', {
-        //   headers: { Authorization: `Bearer ${token}` }
-        // });
-        // setUser(response.data);
-        
-        // For development:
-        const userData = JSON.parse(storedUser);
-        setUser({
-          _id: userData.id || '123',
-          name: userData.name || 'John Doe',
-          email: userData.email || 'john@example.com',
-          role: userData.role || 'user',
-          address: {
-            street: '123 Main St',
-            city: 'New York',
-            state: 'NY',
-            zipCode: '10001',
-            country: 'USA'
+        try {
+          // Use our API utility with proper error handling
+          const response = await api.get('/api/users/profile');
+          if (response.data) {
+            setUser(response.data);
+          } else {
+            throw new Error('No user data received');
           }
-        });
-        
-      } catch (err) {
+        } catch (apiError: any) {
+          console.error('API error:', apiError);
+          
+          // Fallback to localStorage if API fails
+          console.log('API call failed, using stored user data');
+          const userData = JSON.parse(storedUser);
+          
+          // Check if userData has all required fields
+          if (!userData.name || !userData.email || !userData.role) {
+            throw new Error('Incomplete user data in local storage');
+          }
+          
+          setUser({
+            _id: userData.id || userData._id,
+            name: userData.name,
+            email: userData.email,
+            role: userData.role || 'user',
+            address: userData.address || {
+              street: '',
+              city: '',
+              state: '',
+              zipCode: '',
+              country: ''
+            }
+          });
+        }
+      } catch (err: any) {
         console.error('Error fetching profile:', err);
-        setError('Failed to load user profile');
+        setError('Failed to load user profile: ' + (err.message || 'Unknown error'));
+        // Don't redirect immediately, show the error message first
       } finally {
         setIsLoading(false);
       }
@@ -135,31 +149,25 @@ export default function UserProfile() {
     setError('');
     
     try {
-      const token = localStorage.getItem('token');
+      // Send API request to update profile
+      await api.put('/api/users/profile', {
+        name: user.name,
+        address: user.address
+      });
       
-      // For production:
-      // await axios.put('/api/users/profile', {
-      //   name: user.name,
-      //   address: user.address
-      // }, {
-      //   headers: { Authorization: `Bearer ${token}` }
-      // });
-      
-      // For development:
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Update local storage
+      // Update local storage to keep it in sync
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
       const updatedUser = {
         ...storedUser,
-        name: user.name
+        name: user.name,
+        address: user.address
       };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       
       setSuccessMessage('Profile updated successfully!');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating profile:', err);
-      setError('Failed to update profile. Please try again.');
+      setError('Failed to update profile: ' + (err.response?.data?.message || err.message || 'Unknown error'));
     } finally {
       setIsSaving(false);
     }
@@ -184,18 +192,10 @@ export default function UserProfile() {
     setPasswordSuccess('');
     
     try {
-      const token = localStorage.getItem('token');
-      
-      // For production:
-      // await axios.put('/api/users/change-password', {
-      //   currentPassword: passwordForm.currentPassword,
-      //   newPassword: passwordForm.newPassword
-      // }, {
-      //   headers: { Authorization: `Bearer ${token}` }
-      // });
-      
-      // For development:
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await api.put('/api/users/change-password', {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
       
       setPasswordSuccess('Password updated successfully!');
       setPasswordForm({
@@ -203,9 +203,10 @@ export default function UserProfile() {
         newPassword: '',
         confirmPassword: ''
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error changing password:', err);
-      setPasswordError('Failed to change password. Ensure your current password is correct.');
+      setPasswordError(err.response?.data?.message || 
+                      'Failed to change password. Ensure your current password is correct.');
     } finally {
       setIsSaving(false);
     }

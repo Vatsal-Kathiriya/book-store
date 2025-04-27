@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { FiChevronRight, FiChevronLeft, FiCheck, FiCreditCard } from 'react-icons/fi';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 // Define types for checkout form
 interface ShippingInfo {
@@ -15,6 +17,7 @@ interface ShippingInfo {
   zipCode: string;
   country: string;
   phoneNumber: string;
+  saveForNextTime: boolean;
 }
 
 interface PaymentInfo {
@@ -22,18 +25,81 @@ interface PaymentInfo {
   cardNumber: string;
   expiryDate: string;
   cvv: string;
-  saveCard: boolean;
+  saveForNextTime: boolean;
 }
+
+// User-specific storage utilities
+const getUserStorageKey = (userId, type) => {
+  return `bookstore_${userId}_${type}`;
+};
+
+const saveUserShippingInfo = (userId, shippingInfo) => {
+  if (!userId || !shippingInfo.saveForNextTime) return;
+  
+  try {
+    // Remove the checkbox state before saving
+    const { saveForNextTime, ...dataToStore } = shippingInfo;
+    localStorage.setItem(getUserStorageKey(userId, 'shipping_info'), JSON.stringify(dataToStore));
+  } catch (error) {
+    console.error('Error saving shipping info:', error);
+  }
+};
+
+const getUserShippingInfo = (userId) => {
+  if (!userId) return null;
+  
+  try {
+    const data = localStorage.getItem(getUserStorageKey(userId, 'shipping_info'));
+    return data ? JSON.parse(data) : null;
+  } catch (error) {
+    console.error('Error retrieving shipping info:', error);
+    return null;
+  }
+};
+
+const saveUserPaymentInfo = (userId, paymentInfo) => {
+  if (!userId || !paymentInfo.saveForNextTime) return;
+  
+  try {
+    // Store only card name, expiry date, and last 4 digits of the card
+    const lastFourDigits = paymentInfo.cardNumber.slice(-4);
+    const safePaymentInfo = {
+      cardName: paymentInfo.cardName,
+      cardNumber: `**** **** **** ${lastFourDigits}`,
+      expiryDate: paymentInfo.expiryDate,
+      // Do not store CVV for security reasons
+    };
+    
+    localStorage.setItem(getUserStorageKey(userId, 'payment_info'), JSON.stringify(safePaymentInfo));
+  } catch (error) {
+    console.error('Error saving payment info:', error);
+  }
+};
+
+const getUserPaymentInfo = (userId) => {
+  if (!userId) return null;
+  
+  try {
+    const data = localStorage.getItem(getUserStorageKey(userId, 'payment_info'));
+    return data ? JSON.parse(data) : null;
+  } catch (error) {
+    console.error('Error retrieving payment info:', error);
+    return null;
+  }
+};
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { cart, cartSubtotal, cartTax, cartShipping, cartTotal, clearCart } = useCart();
   
   const [step, setStep] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Form states
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
@@ -44,6 +110,7 @@ export default function CheckoutPage() {
     zipCode: '',
     country: 'USA',
     phoneNumber: '',
+    saveForNextTime: true,
   });
 
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo>({
@@ -51,15 +118,43 @@ export default function CheckoutPage() {
     cardNumber: '',
     expiryDate: '',
     cvv: '',
-    saveCard: false,
+    saveForNextTime: true,
   });
+
+  // Load saved user data when component mounts
+  useEffect(() => {
+    if (user && user.id) {
+      // Load saved shipping info for this specific user
+      const savedShippingInfo = getUserShippingInfo(user.id);
+      if (savedShippingInfo) {
+        setShippingInfo({
+          ...savedShippingInfo,
+          saveForNextTime: true,
+        });
+      }
+      
+      // Load saved payment info for this specific user
+      const savedPaymentInfo = getUserPaymentInfo(user.id);
+      if (savedPaymentInfo) {
+        setPaymentInfo({
+          ...paymentInfo,
+          ...savedPaymentInfo,
+          saveForNextTime: true,
+          // Clear CVV since we don't store it
+          cvv: '',
+        });
+      }
+    }
+    
+    setIsLoading(false);
+  }, [user]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
-    if (!user && !isLoading) {
+    if (!user && !authLoading) {
       router.push('/login?redirect=checkout');
     }
-  }, [user, router, isLoading]);
+  }, [user, router, authLoading]);
 
   // Redirect to cart if cart is empty
   useEffect(() => {
@@ -78,17 +173,24 @@ export default function CheckoutPage() {
     }
   }, [user]);
 
-  const handleShippingInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setShippingInfo(prev => ({ ...prev, [name]: value }));
+  const handleShippingInfoChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setShippingInfo(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
   };
 
-  const handlePaymentInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePaymentInfoChange = (e) => {
     const { name, value, type, checked } = e.target;
     setPaymentInfo(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
+  };
+  
+  const handlePaymentMethodChange = (method) => {
+    setPaymentMethod(method);
   };
 
   const validateShippingInfo = () => {
@@ -104,7 +206,9 @@ export default function CheckoutPage() {
   };
 
   const validatePaymentInfo = () => {
-    // Basic validation
+    if (paymentMethod !== 'card') return true;
+    
+    // Basic validation for card payments
     return (
       paymentInfo.cardName &&
       paymentInfo.cardNumber &&
@@ -128,25 +232,91 @@ export default function CheckoutPage() {
   };
 
   const handlePlaceOrder = async () => {
-    setIsLoading(true);
-
+    // Clear any previous errors
+    setErrorMessage('');
+    setIsSubmitting(true);
+    
     try {
-      // Simulate API call to place order
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Generate random order number
-      const generatedOrderNumber = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
-      setOrderNumber(generatedOrderNumber);
+      if (!validateShippingInfo()) {
+        throw new Error('Please complete all required shipping information');
+      }
+      
+      if (paymentMethod === 'card' && !validatePaymentInfo()) {
+        throw new Error('Please complete all required payment information');
+      }
+      
+      // Save user shipping/payment info if needed and user is logged in
+      if (user && user.id) {
+        // Only save info if the user opted to
+        if (shippingInfo.saveForNextTime) {
+          saveUserShippingInfo(user.id, shippingInfo);
+        }
+        if (paymentMethod === 'card' && paymentInfo.saveForNextTime) {
+          saveUserPaymentInfo(user.id, paymentInfo);
+        }
+      }
+      
+      // Create order object from cart and shipping details
+      const orderData = {
+        items: cart.map(item => ({
+          bookId: item.id,
+          quantity: item.quantity
+        })),
+        shippingAddress: {
+          name: shippingInfo.fullName,
+          street: shippingInfo.address,
+          city: shippingInfo.city,
+          state: shippingInfo.state,
+          zipCode: shippingInfo.zipCode,
+          country: shippingInfo.country,
+          phone: shippingInfo.phoneNumber
+        },
+        paymentMethod: paymentMethod === 'card' ? 'Credit Card' : 'PayPal'
+      };
+      
+      // Make the actual API call to create the order
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(orderData)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to place order');
+      }
+      
+      const result = await response.json();
+      
+      // Use the actual order ID from the API response
+      const orderNumber = result.order._id ? `ORD-${result.order._id.substring(0, 6)}` : 
+                         'ORD-' + Math.floor(100000 + Math.random() * 900000);
+      
+      // Order successfully placed
+      setOrderNumber(orderNumber);
       setOrderPlaced(true);
       
       // Clear cart after successful order
       clearCart();
     } catch (error) {
       console.error('Error placing order:', error);
+      setErrorMessage(error.message || 'There was a problem placing your order. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
+
+  // Render loading state
+  if (isLoading) {
+    return (
+      <div className="container-page py-8 flex justify-center items-center min-h-[60vh]">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
 
   // Render order success screen
   if (orderPlaced) {
@@ -174,12 +344,12 @@ export default function CheckoutPage() {
             >
               Continue Shopping
             </button>
-            <button
-              onClick={() => router.push('/orders')}
+            <Link
+              href={`/orders/${orderNumber.replace('ORD-', '')}`}
               className="btn-outline"
             >
               View Order Status
-            </button>
+            </Link>
           </div>
         </div>
       </div>
@@ -221,6 +391,13 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="mb-6 p-4 bg-red-100 border border-red-200 text-red-700 rounded-md">
+          <p>{errorMessage}</p>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-3 gap-8">
         {/* Checkout Form */}
@@ -350,94 +527,139 @@ export default function CheckoutPage() {
             {step === 2 && (
               <>
                 <h2 className="text-xl font-bold mb-6">Payment Information</h2>
-                <div className="grid grid-cols-1 gap-6 mb-6">
-                  <div>
-                    <label htmlFor="cardName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Name on Card
-                    </label>
-                    <input
-                      type="text"
-                      id="cardName"
-                      name="cardName"
-                      value={paymentInfo.cardName}
-                      onChange={handlePaymentInfoChange}
-                      className="form-input"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="relative">
-                    <label htmlFor="cardNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Card Number
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        id="cardNumber"
-                        name="cardNumber"
-                        value={paymentInfo.cardNumber}
-                        onChange={handlePaymentInfoChange}
-                        className="form-input pl-11"
-                        placeholder="1234 5678 9012 3456"
-                        maxLength={19}
-                        required
-                      />
-                      <div className="absolute left-0 top-0 flex items-center h-full ml-3">
-                        <FiCreditCard className="text-gray-500" />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Expiry Date
-                      </label>
-                      <input
-                        type="text"
-                        id="expiryDate"
-                        name="expiryDate"
-                        value={paymentInfo.expiryDate}
-                        onChange={handlePaymentInfoChange}
-                        className="form-input"
-                        placeholder="MM/YY"
-                        maxLength={5}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="cvv" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        CVV
-                      </label>
-                      <input
-                        type="text"
-                        id="cvv"
-                        name="cvv"
-                        value={paymentInfo.cvv}
-                        onChange={handlePaymentInfoChange}
-                        className="form-input"
-                        placeholder="123"
-                        maxLength={4}
-                        required
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="saveCard"
-                      name="saveCard"
-                      checked={paymentInfo.saveCard}
-                      onChange={handlePaymentInfoChange}
-                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                    />
-                    <label htmlFor="saveCard" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                      Save this card for future purchases
-                    </label>
+                
+                <div className="mb-6">
+                  <div className="flex space-x-4">
+                    <button 
+                      type="button"
+                      onClick={() => handlePaymentMethodChange('card')}
+                      className={`flex-1 p-4 border rounded-md flex items-center justify-center ${
+                        paymentMethod === 'card' 
+                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300' 
+                          : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                    >
+                      <FiCreditCard className="mr-2" /> Credit Card
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => handlePaymentMethodChange('paypal')}
+                      className={`flex-1 p-4 border rounded-md flex items-center justify-center ${
+                        paymentMethod === 'paypal' 
+                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300' 
+                          : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                    >
+                      <span className="font-bold text-blue-600 dark:text-blue-400 mr-1">Pay</span>
+                      <span className="font-bold text-blue-800 dark:text-blue-300">Pal</span>
+                    </button>
                   </div>
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
+                
+                {paymentMethod === 'card' && (
+                  <div className="grid grid-cols-1 gap-6">
+                    {/* Card payment fields */}
+                    <div>
+                      <label htmlFor="cardName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Name on Card
+                      </label>
+                      <input
+                        type="text"
+                        id="cardName"
+                        name="cardName"
+                        value={paymentInfo.cardName}
+                        onChange={handlePaymentInfoChange}
+                        className="form-input"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="relative">
+                      <label htmlFor="cardNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Card Number
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          id="cardNumber"
+                          name="cardNumber"
+                          value={paymentInfo.cardNumber}
+                          onChange={handlePaymentInfoChange}
+                          className="form-input pl-11"
+                          placeholder="1234 5678 9012 3456"
+                          maxLength={19}
+                          required
+                        />
+                        <div className="absolute left-0 top-0 flex items-center h-full ml-3">
+                          <FiCreditCard className="text-gray-500" />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Expiry Date
+                        </label>
+                        <input
+                          type="text"
+                          id="expiryDate"
+                          name="expiryDate"
+                          value={paymentInfo.expiryDate}
+                          onChange={handlePaymentInfoChange}
+                          className="form-input"
+                          placeholder="MM/YY"
+                          maxLength={5}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="cvv" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          CVV
+                        </label>
+                        <input
+                          type="text"
+                          id="cvv"
+                          name="cvv"
+                          value={paymentInfo.cvv}
+                          onChange={handlePaymentInfoChange}
+                          className="form-input"
+                          placeholder="123"
+                          maxLength={4}
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="saveForNextTime"
+                        name="saveForNextTime"
+                        checked={paymentInfo.saveForNextTime}
+                        onChange={handlePaymentInfoChange}
+                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="saveForNextTime" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                        Save this card for future purchases
+                      </label>
+                    </div>
+                  </div>
+                )}
+                
+                {paymentMethod === 'paypal' && (
+                  <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-md text-center">
+                    <p className="text-gray-600 dark:text-gray-300 mb-4">
+                      You will be redirected to PayPal to complete your payment.
+                    </p>
+                    <div className="inline-block bg-blue-600 text-white font-bold px-4 py-2 rounded-md">
+                      <span className="text-blue-100">Pay</span>
+                      <span className="text-white">Pal</span>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md mt-6">
                   <p className="text-sm text-gray-600 dark:text-gray-300">
                     Your payment information is encrypted and secure. We never store your full credit card details.
                   </p>
@@ -470,9 +692,12 @@ export default function CheckoutPage() {
                   </div>
                   <div>
                     <p className="text-gray-800 dark:text-gray-200">
-                      Credit Card ending in {paymentInfo.cardNumber.slice(-4)}
+                      {paymentMethod === 'card' 
+                        ? `Credit Card ending in ${paymentInfo.cardNumber.slice(-4)}` 
+                        : 'PayPal'
+                      }
                     </p>
-                    <p className="text-gray-600 dark:text-gray-300">{paymentInfo.cardName}</p>
+                    <p className="text-gray-600 dark:text-gray-300">{paymentMethod === 'card' && paymentInfo.cardName}</p>
                   </div>
                 </div>
                 
@@ -527,16 +752,16 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={handlePlaceOrder}
-                    className="btn-primary flex items-center"
-                    disabled={isLoading}
+                    className="btn-primary flex items-center justify-center"
+                    disabled={isSubmitting}
                   >
-                    {isLoading ? (
-                      <span className="flex items-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                    {isSubmitting ? (
+                      <>
+                        <div className="mr-2 animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
                         Processing...
-                      </span>
+                      </>
                     ) : (
-                      <span>Place Order</span>
+                      "Place Order"
                     )}
                   </button>
                 )}

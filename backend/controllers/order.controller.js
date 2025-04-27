@@ -13,7 +13,10 @@ exports.createOrder = async (req, res) => {
     
     // Validate request
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: 'Order must contain at least one item' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Order must contain at least one item' 
+      });
     }
     
     if (!shippingAddress) {
@@ -48,11 +51,17 @@ exports.createOrder = async (req, res) => {
       for (const item of items) {
         const { bookId, quantity } = item;
         
-        // Validate item
-        if (!bookId || !mongoose.Types.ObjectId.isValid(bookId)) {
-          throw new Error(`Invalid book ID: ${bookId}`);
+        // Enhanced validation with more informative errors
+        if (!bookId) {
+          throw new Error('Book ID is required for all items');
         }
         
+        // Better ObjectId validation
+        if (!mongoose.Types.ObjectId.isValid(bookId)) {
+          throw new Error(`Invalid book ID format: ${bookId}. Must be a valid MongoDB ObjectId.`);
+        }
+        
+        // Validate item
         if (!quantity || quantity <= 0) {
           throw new Error('Quantity must be greater than 0');
         }
@@ -72,12 +81,17 @@ exports.createOrder = async (req, res) => {
           }
         );
         
-        // If book not found or insufficient inventory
+        // If book not found or insufficient inventory, provide better errors
         if (!book) {
           const checkBook = await Book.findById(bookId).session(session);
           
           if (!checkBook) {
-            throw new Error(`Book not found: ${bookId}`);
+            // Log all books in the database to help diagnose the issue
+            if (process.env.NODE_ENV === 'development') {
+              const allBooks = await Book.find({}, '_id title').limit(10).lean().session(session);
+              console.log(`Available books in DB: ${JSON.stringify(allBooks)}`);
+            }
+            throw new Error(`Book not found with ID: ${bookId}. Please check if the book exists in the database.`);
           }
           
           if (checkBook.quantity < quantity) {
@@ -138,9 +152,20 @@ exports.createOrder = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating order:', error);
-    res.status(error.message.includes('not found') || error.message.includes('Invalid') ? 400 : 500).json({ 
+    
+    // More specific error status codes
+    let statusCode = 500;
+    let errorMessage = error.message || 'Failed to create order';
+    
+    if (errorMessage.includes('not found') || errorMessage.includes('Book not found')) {
+      statusCode = 404;
+    } else if (errorMessage.includes('Invalid book ID') || errorMessage.includes('required')) {
+      statusCode = 400;
+    }
+    
+    res.status(statusCode).json({ 
       success: false,
-      message: error.message || 'Failed to create order',
+      message: errorMessage,
       error: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
@@ -249,11 +274,17 @@ exports.getOrderById = async (req, res) => {
     const orderId = req.params.id;
     const userId = req.user._id;
     
-    // Find the order
+    console.log(`Fetching order ${orderId} for user ${userId}`);
+    
+    // Find the order with populated book details
     const order = await Order.findById(orderId)
-      .populate('items.book', 'title author price imageUrl');
+      .populate({
+        path: 'items.book',
+        select: 'title author price imageUrl'
+      });
     
     if (!order) {
+      console.log(`Order not found: ${orderId}`);
       return res.status(404).json({ 
         success: false,
         message: 'Order not found' 
@@ -263,9 +294,47 @@ exports.getOrderById = async (req, res) => {
     // Check if the user is authorized to view this order
     // Admin can view any order, regular users can only view their own orders
     if (req.user.role !== 'admin' && order.user.toString() !== userId.toString()) {
+      console.log(`User ${userId} not authorized to view order ${orderId}`);
       return res.status(403).json({ 
         success: false,
         message: 'Not authorized to view this order' 
+      });
+    }
+    
+    console.log(`Successfully fetched order ${orderId}`);
+    res.json({
+      success: true,
+      order
+    });
+  } catch (error) {
+    console.error('Error fetching order:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch order',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * Get an admin order by ID 
+ */
+exports.getAdminOrderById = async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    
+    // Find the order with populated user and book details
+    const order = await Order.findById(orderId)
+      .populate('user', 'name email')
+      .populate({
+        path: 'items.book',
+        select: 'title author price imageUrl'
+      });
+    
+    if (!order) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Order not found' 
       });
     }
     
@@ -274,7 +343,7 @@ exports.getOrderById = async (req, res) => {
       order
     });
   } catch (error) {
-    console.error('Error fetching order:', error);
+    console.error('Error fetching admin order:', error);
     res.status(500).json({ 
       success: false,
       message: 'Failed to fetch order',
